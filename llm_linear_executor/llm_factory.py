@@ -15,7 +15,7 @@ LLM 工厂函数模块
 """
 
 import os
-from typing import Callable, Optional
+from typing import Callable, Optional, Type
 
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_openai import ChatOpenAI
@@ -140,58 +140,64 @@ def create_openai_llm(
 # =============================================================================
 
 def create_llm_factory(
-    model_type: str = "qwen",
     model: str = "qwen-plus-2025-12-01",
     api_key: Optional[str] = None,
-    temperature: float = 0.7,
-    **kwargs
-) -> Callable[[], BaseChatModel]:
+    chat_model: Type[BaseChatModel] = ChatOpenAI, 
+    enable_search: bool = False,
+    enable_thinking: bool = False,
+    **base_kwargs
+) -> Callable[..., BaseChatModel]:
     """
-    创建 LLM 工厂函数，用于延迟创建模型实例
+    创建 LLM 工厂函数，返回的 callback 可创建新的 BaseChatModel 实例
 
-    这在需要多次创建相同配置模型的场景很有用，例如在 Executor 中。
+    预先配置 api_key 和 model，返回的 callback 只需要传入 temperature 等运行时参数。
 
     Args:
-        model_type: 模型类型，可选 "qwen" 或 "openai"
-        model: 模型名称，不同类型有不同默认值
-        api_key: API密钥
-        temperature: 温度参数
-        **kwargs: 其他传递给模型创建函数的参数
+        model: 模型名称，默认 qwen-plus-2025-12-01
+        api_key: API密钥，如果为None则从环境变量读取
+        enable_search: 是否启用联网搜索
+        enable_thinking: 是否启用思考模式
+        **base_kwargs: 其他预配置的参数
 
     Returns:
-        返回一个无参函数，调用时返回模型实例
+        返回一个函数，调用时传入 temperature 等参数即可创建新实例
 
     Example:
-        >>> factory = create_llm_factory(model_type="qwen", model="qwen-plus")
-        >>> llm1 = factory()
-        >>> llm2 = factory()  # 创建相同配置的新实例
+        >>> factory = create_llm_factory(model="qwen-plus")
+        >>> llm1 = factory(temperature=0.3)  # 创建低温实例
+        >>> llm2 = factory(temperature=0.9)  # 创建高温实例
     """
-    # 设置默认模型名称
-    if model is None:
-        model = "qwen-plus" if model_type == "qwen" else "gpt-4o-mini"
+    # 获取 API key
+    if api_key is None:
+        api_key = os.getenv("DASHSCOPE_API_KEY") or os.getenv("OPENAI_API_KEY")
 
-    # 根据类型选择创建函数
-    if model_type == "qwen":
-        creator_kwargs = {
-            "api_key": api_key,
-            "model": model,
-            "temperature": temperature,
-            **kwargs
-        }
-        return lambda: create_qwen_llm(**creator_kwargs)
-    elif model_type == "openai":
-        creator_kwargs = {
-            "api_key": api_key,
-            "model": model,
-            "temperature": temperature,
-            **kwargs
-        }
-        return lambda: create_openai_llm(**creator_kwargs)
-    else:
-        raise ValueError(
-            f"不支持的 model_type: {model_type}，"
-            f"支持的类型: 'qwen', 'openai'"
-        )
+    # 預配置参数
+    base_config = {
+        "model": model,
+        "api_key": api_key,
+        "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    }
+    
+    if not issubclass(chat_model, BaseChatModel):
+        raise ValueError(f"chat_model 必须是 BaseChatModel 的子类，但收到了: {chat_model}")
+
+    if enable_search:
+        base_config["enable_search"] = True
+    if enable_thinking:
+        base_config["enable_thinking"] = True
+
+    base_config.update(base_kwargs)
+
+    def callback(
+        temperature: float = 0.7,
+        **kwargs
+    ) -> BaseChatModel:
+        """创建新的 LLM 实例"""
+        config = {**base_config, "temperature": temperature}
+        config.update(kwargs)
+        return chat_model(**config)
+
+    return callback
 
 
 # =============================================================================
@@ -266,8 +272,10 @@ if __name__ == "__main__":
     # 测试 3: 工厂函数
     print("\n3. 测试工厂函数:")
     try:
-        factory = create_llm_factory(model_type="qwen", model="qwen-plus")
+        factory = create_llm_factory(model="qwen-plus", chat_model=ChatOpenAI)
         print(f"   工厂函数创建成功: {factory}")
+        llm = factory(temperature=0.5)
+        print(f"   实例创建成功: {llm.model_name}")
     except Exception as e:
         print(f"   创建失败: {e}")
 
