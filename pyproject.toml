@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "llm_linear_executor"
+version = "0.1.0"
+description = "A lightweight, sequential task execution engine for LLMs."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+    { name = "nico", email = "nico.dev.ai@qq.com" }
+] 
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "pydantic>=2.0.0",
+    "openai>=1.0.0",
+    # Add other dependencies here (e.g. PySide6 if using UI components)
+]
+
+[project.urls]
+Homepage = https://github.com/nikonikoni4/llm_linear_executor.git
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["*"]

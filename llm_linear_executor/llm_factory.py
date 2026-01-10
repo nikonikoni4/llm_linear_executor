@@ -27,7 +27,7 @@ from langchain_openai import ChatOpenAI
 
 def create_qwen_llm(
     api_key: Optional[str] = None,
-    model: str = "qwen-plus",
+    model: str = "qwen-plus-2025-12-01",
     enable_search: bool = False,
     enable_thinking: bool = False,
     temperature: float = 0.7,
@@ -141,7 +141,7 @@ def create_openai_llm(
 
 def create_llm_factory(
     model_type: str = "qwen",
-    model: str = None,
+    model: str = "qwen-plus-2025-12-01",
     api_key: Optional[str] = None,
     temperature: float = 0.7,
     **kwargs

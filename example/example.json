@@ -1,0 +1,101 @@
+{
+  "comprehensive": {
+    "task": "总结今天我做了什么",
+    "nodes": [
+      {
+        "node_type": "tool-first",
+        "node_name": "获取活跃分布数据",
+        "thread_id": "t1",
+        "task_prompt": "提取今日24小时电脑使用强度统计，用于分析活跃分布模式。",
+        "tools": [
+          "get_daily_stats"
+        ],
+        "initial_tool_name": "get_daily_stats",
+        "initial_tool_args": {
+          "module": "active_distribution"
+        },
+        "data_out": true,
+        "data_out_description": "活跃分布：24小时电脑使用强度统计",
+        "parent_thread_id": null
+      },
+      {
+        "node_type": "tool-first",
+        "node_name": "获取分时段行为数据",
+        "thread_id": "t2",
+        "task_prompt": "提取四个时段的分类占比与主要活动记录，支撑分时段行为分析。",
+        "tools": [
+          "get_daily_stats"
+        ],
+        "initial_tool_name": "get_daily_stats",
+        "initial_tool_args": {
+          "module": "behavior_stats"
+        },
+        "data_out": true,
+        "data_out_description": "分时段行为：含分类占比及主要活动记录",
+        "parent_thread_id": null
+      },
+      {
+        "node_type": "tool-first",
+        "node_name": "获取目标投入数据",
+        "thread_id": "t3",
+        "task_prompt": "提取核心项目实际时间产出，用于评估目标投入完成度。",
+        "tools": [
+          "get_daily_stats"
+        ],
+        "initial_tool_name": "get_daily_stats",
+        "initial_tool_args": {
+          "module": "target_investment"
+        },
+        "data_out": true,
+        "data_out_description": "目标投入：核心项目的实际时间产出",
+        "parent_thread_id": null
+      },
+      {
+        "node_type": "tool-first",
+        "node_name": "获取任务状态数据",
+        "thread_id": "t4",
+        "task_prompt": "提取今日focus事项与todos进度，用于分析任务执行状态。",
+        "tools": [
+          "get_daily_stats"
+        ],
+        "initial_tool_name": "get_daily_stats",
+        "initial_tool_args": {
+          "module": "task_status"
+        },
+        "data_out": true,
+        "data_out_description": "任务状态：今日重点（Focus）与待办清单（Todos）进度",
+        "parent_thread_id": null
+      },
+      {
+        "node_type": "tool-first",
+        "node_name": "获取横向对比数据",
+        "thread_id": "t5",
+        "task_prompt": "提取与上一周期在分类时长及目标投入上的差值，支撑横向对比分析。",
+        "tools": [
+          "get_daily_stats"
+        ],
+        "initial_tool_name": "get_daily_stats",
+        "initial_tool_args": {
+          "module": "comparison"
+        },
+        "data_out": true,
+        "data_out_description": "横向对比：分类时长及目标投入的周期变化",
+        "parent_thread_id": null
+      },
+      {
+        "node_type": "llm-first",
+        "node_name": "综合分析生成每日总结",
+        "thread_id": "t6",
+        "task_prompt": "基于五个维度（活跃分布、分时段行为、目标投入、任务状态、横向对比）的数据，生成符合要求的每日总结。必须：1. 每个维度独立分析；2. 使用'可能''推测'等限定词明确标注数据局限性（仅反映电脑使用行为，不含移动端/离线/非屏幕活动）；3. 严格遵循五维结构输出；4. 不添加未提供数据的推断。",
+        "data_in_thread": "t1",
+        "data_in_slice": [
+          0,
+          1
+        ],
+        "data_out": true,
+        "parent_thread_id": null,
+        "tools": null
+      }
+    ]
+  }
+}

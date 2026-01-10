@@ -3,11 +3,11 @@
 
 使用 LLM 根据技能定义生成执���计划 (ExecutionPlan)
 """
+from typing import Sequence
 from pathlib import Path
 from langchain_core.output_parsers import PydanticOutputParser
-
-from .llm_factory import create_qwen_llm
-from .data_driving_schemas import ExecutionPlan
+from langchain_core.tools import BaseTool
+from .schemas import ExecutionPlan
 
 
 def read_skill_definition(skills_path: str | Path) -> str:
@@ -31,20 +31,17 @@ def read_skill_definition(skills_path: str | Path) -> str:
 
 
 def plan_generator(
-    date: str,
+    task: str,
     skills_path: str | Path,
-    api_key: str | None = None,
-    model: str = "qwen-plus",
-    enable_thinking: bool = True
+    llm,
+    tools: Sequence[BaseTool]
 ) -> ExecutionPlan:
     """
     根据技能定义生成执行计划
 
     Args:
-        date: 需要总结的日期，格式 YYYY-MM-DD
         skills_path: 技能定义文件路径
-        api_key: API 密钥，如果为 None 则从环境变量读取
-        model: 使用的模型名称，默认 qwen-plus
+        llm: langchain的chatmodel
         enable_thinking: 是否启用思考模式
 
     Returns:
@@ -52,7 +49,6 @@ def plan_generator(
 
     Example:
         >>> plan = plan_generator(
-        ...     date="2026-01-03",
         ...     skills_path="skills/user_behavior_summary.md"
         ... )
         >>> print(plan.task)
@@ -60,29 +56,29 @@ def plan_generator(
     # 读取技能定义
     skill_definition = read_skill_definition(skills_path)
 
+    tool_definitions = "\n".join(
+        [f"{tool.name}: {tool.description}, args: {tool.args}" for tool in tools]
+    )
+
     # 设置输出解析器
     parser = PydanticOutputParser(pydantic_object=ExecutionPlan)
 
     # 构建提示词
-    question = f"总结{date}我做了什么"
     prompt = f"""你需要依据给定的技能定义，为用户生成一个执行计划。
-    # 技能定义
-    {skill_definition}
+# 技能定义
+{skill_definition}
+# 可用的工具
+{tool_definitions}
 # 输出格式
 {parser.get_format_instructions()}
 # 用户的任务
-{question}
+{task}
 """
 
     print(prompt)
 
     # 创建 LLM 并生成计划
-    plan_llm = create_qwen_llm(
-        api_key=api_key,
-        model=model,
-        enable_thinking=enable_thinking
-    )
-    result = plan_llm.invoke(prompt)
+    result = llm.invoke(prompt)
     print(result)
 
     # 解析结果为 ExecutionPlan

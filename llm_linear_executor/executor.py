@@ -1,7 +1,7 @@
 # 执行器定义 V2
 # 支持多线程 Context 和 4 种节点类型分发
 
-from data_driving_schemas import (
+from .schemas import (
     Context, NodeDefinition, ExecutionPlan, NodeType
 )
 from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
@@ -16,7 +16,6 @@ class Executor:
     支持特性:
     - 多线程 Context 消息隔离
     - 2 种节点类型分发执行 (llm_auto, tool, query, ) # planning未实现
-    - data_out 机制: 子线程向父线程输出结果
     """
     
 

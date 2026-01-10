@@ -1,6 +1,6 @@
-# Data Driving Agent V2
+# llm_linear_executor
 
-数据驱动的 LLM Agent 执行器，支持多线程上下文隔离和灵活的节点调度。
+llm_linear_executor A lightweight, sequential task execution engine for LLMs. It orchestrates linear plans with context isolation and flexible node scheduling, designed to turn complex workflows into manageable, step-by-step actions
 
 ---
 

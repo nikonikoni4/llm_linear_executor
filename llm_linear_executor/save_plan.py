@@ -13,12 +13,11 @@ import json
 import re
 from pathlib import Path
 from typing import Any
-from data_driving_schemas import ExecutionPlan
+from .schemas import ExecutionPlan
 
 
 def save_plan_as_template(
     plan: ExecutionPlan,
-    date: str,
     output_path: str | Path,
     pattern_name: str = "llm_generate_pattern",
     tools_limit: dict[str, int] | None = None,
@@ -29,7 +28,6 @@ def save_plan_as_template(
     
     Args:
         plan: 执行计划对象
-        date: 需要被替换的具体日期，格式 YYYY-MM-DD，替换为 {date}
         output_path: 输出 JSON 文件路径
         pattern_name: 模式名称，默认 "llm_generate_pattern"
         tools_limit: 可选的工具调用次数限制
@@ -39,7 +37,6 @@ def save_plan_as_template(
     Example:
         >>> save_plan_as_template(
         ...     plan=plan,
-        ...     date="2026-01-05",
         ...     output_path="patterns/daily.json",
         ...     pattern_name="simple",
         ...     tools_limit={"get_daily_stats": 1},
@@ -73,9 +70,6 @@ def save_plan_as_template(
     # 转为 JSON 字符串
     plan_json_str = json.dumps(plan_dict, ensure_ascii=False, indent=2)
     
-    # 替换日期为占位符
-    plan_json_str = plan_json_str.replace(date, "{date}")
-    
     # 替换额外的占位符
     if placeholders:
         for actual_value, placeholder_name in placeholders.items():
@@ -106,60 +100,9 @@ def save_plan_as_template(
         print(f"   工具限制: {tools_limit}")
 
 
-def load_plan_from_template(
-    json_path: str | Path,
-    pattern_name: str,
-    date: str,
-    extra_replacements: dict[str, str] | None = None
-) -> tuple[ExecutionPlan, dict[str, int] | None]:
-    """
-    从 JSON 模板加载执行计划
-    
-    Args:
-        json_path: JSON 模板文件路径
-        pattern_name: 要加载的模式名称
-        date: 替换 {date} 占位符的实际日期
-        extra_replacements: 额外的占位符替换，格式 {"{placeholder}": "actual_value"}
-    
-    Returns:
-        tuple[ExecutionPlan, dict | None]: (执行计划, 工具限制配置)
-    """
-    if isinstance(json_path, str):
-        json_path = Path(json_path)
-    
-    if not json_path.exists():
-        raise FileNotFoundError(f"JSON 文件不存在: {json_path}")
-    
-    # 读取 JSON 模板
-    with open(json_path, "r", encoding="utf-8") as f:
-        all_patterns = json.load(f)
-    
-    # 获取指定的 pattern
-    if pattern_name not in all_patterns:
-        raise ValueError(f"未知的 pattern_name: {pattern_name}，可用: {list(all_patterns.keys())}")
-    
-    plan_data = all_patterns[pattern_name]
-    
-    # 替换占位符
-    plan_json_str = json.dumps(plan_data, ensure_ascii=False)
-    plan_json_str = plan_json_str.replace("{date}", date)
-    
-    # 替换额外的占位符
-    if extra_replacements:
-        for placeholder, actual_value in extra_replacements.items():
-            plan_json_str = plan_json_str.replace(placeholder, actual_value)
-    
-    plan_data = json.loads(plan_json_str)
-    
-    # 提取 tools_limit
-    # tools_limit = plan_data.pop("tools_limit", None)
-    
-    return ExecutionPlan(**plan_data), None
-
-
 # 示例用法
 if __name__ == "__main__":
-    from .data_driving_schemas import NodeDefinition
+    from .schemas import NodeDefinition
     from pathlib import Path
 
     # 示例1：手动创建计划并保存
@@ -193,7 +136,6 @@ if __name__ == "__main__":
     output_path = Path(__file__).parent / "patterns" / "example_daily_plan.json"
     save_plan_as_template(
         plan=example_plan,
-        date="2026-01-05",
         output_path=output_path,
         pattern_name="simple",
         tools_limit={"get_daily_stats": 1}

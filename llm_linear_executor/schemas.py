@@ -1,7 +1,6 @@
 from typing import Annotated, TypedDict, Literal, Type, Any
 from pydantic import BaseModel, Field, create_model, model_validator
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
-import operator 
+from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langchain_core.output_parsers import PydanticOutputParser
 
 # ============================================================================
@@ -25,10 +24,6 @@ SUB_EXECUTOR_PERMISSIONS: set[NodeType] = {"llm-first", "tool-first"}
 # ============================================================================
 # 线程元信息
 # ============================================================================
-class ThreadMeta(TypedDict):
-    """线程元信息，用于追踪线程父子关系"""
-    parent_thread: str | None  # 父线程ID，主线程为 None
-
 
 class Context(TypedDict):
     """
@@ -37,15 +32,17 @@ class Context(TypedDict):
     结构说明:
     - messages: 按 thread_id 隔离的消息列表
     - data_out: 子线程向外输出的结果，格式为 {role: 'assistant', content: description + result}
-    - thread_meta: 线程元信息，记录父子关系用于合并时确定目标
     
-    合并逻辑:
+    数据外发逻辑:
     当子线程节点 data_out=True 时，将结果写入 data_out[thread_id]
     执行器会根据 thread_meta[thread_id].parent_thread 将其合并到父线程的 messages 中
+    
+    数据输入逻辑：
+    - data_in_thread: 指定输入数据来源线程ID
+    - data_in_slice: 指定消息切片范围 [start, end)
     """
     messages: dict[str, list[AIMessage | HumanMessage | ToolMessage]]  # thread_id : messages
     data_out: dict[str, Any]  # thread_id : 输出内容 {role: 'assistant', content: ...}
-    thread_meta: dict[str, ThreadMeta]  # thread_id : 元信息
 
 
 # ============================================================================
@@ -58,21 +55,25 @@ class NodeDefinition(BaseModel):
     节点类型说明:
     - llm-first: LLM先执行，可选调用工具。适用于需要先推理再行动的场景
     - tool-first: 工具先执行，然后LLM分析结果。适用于需要先获取数据再分析的场景
-    - planning: 规划节点，生成子计划并递归执行（暂未实现）
+    
+    数据流说明:
+    - 输入：
+        - data_in_thread: 指定输入数据来源线程ID，None表示使用parent_thread_id
+        - data_in_slice: 指定消息切片范围 [start, end)。None时取最后一条消息
+    - 输出：
+        - data_out_thread: 指定输出数据的目标线程ID，默认main线程
+        - data_out: 是否将结果输出到（输出）线程
     """
     
     # ===== 核心标识 =====
     node_type: NodeType = Field(
-        description="节点类型: llm-first(LLM先执行), tool-first(工具先执行)" # , planning(规划节点)
+        description="节点类型: llm-first(LLM先执行), tool-first(工具先执行)"
     )
     node_name: str = Field(description="节点名称，用于日志和调试")
     
     # ===== 线程配置 =====
     thread_id: str = Field(description="当前节点的线程ID")
-    parent_thread_id: str | None = Field(
-        default=None, 
-        description="父线程ID，用于确定合并目标。主线程节点为None"
-    )
+
     
     # ===== LLM 配置 =====
     task_prompt: str = Field(
@@ -88,10 +89,6 @@ class NodeDefinition(BaseModel):
     enable_tool_loop: bool = Field(
         default=False,
         description="是否启用工具调用循环。True时LLM可多次调用工具直到完成任务"
-    )
-    tools_limit: dict[str, int] | None = Field(
-        default=None,
-        description="当前节点的工具调用次数限制。None时使用执行器默认限制"
     )
     
     # ===== tool-first 专用 =====
@@ -115,6 +112,10 @@ class NodeDefinition(BaseModel):
     )
     
     # ===== 数据输出配置 =====
+    data_out_thread: str | None = Field(
+        default=None, 
+        description="输出数据目标线程ID，用于确定合并目标。主线程节点为None"
+    )
     data_out: bool = Field(
         default=False, 
         description="是否将结果输出到父线程"

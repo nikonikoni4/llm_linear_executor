@@ -21,22 +21,13 @@ import json
 from pathlib import Path
 from typing import Any
 
-try:
-    from data_driving_schemas import (
-        ExecutionPlan, 
-        NodeDefinition,
-        NodeType,
-        ALL_NODE_TYPES,
-        create_execution_plan_schema
-    )
-except ImportError:
-    from .data_driving_schemas import (
-        ExecutionPlan, 
-        NodeDefinition,
-        NodeType,
-        ALL_NODE_TYPES,
-        create_execution_plan_schema
-    )
+from .schemas import (
+    ExecutionPlan, 
+    NodeDefinition,
+    NodeType,
+    ALL_NODE_TYPES,
+    create_execution_plan_schema
+)
 
 
 # ============================================================================
