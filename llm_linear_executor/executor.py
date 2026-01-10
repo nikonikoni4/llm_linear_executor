@@ -38,7 +38,7 @@ class Executor:
             llm_factory: LLM 工厂函数，用于创建 LLM 实例。如果不提供，需要自行设置默认工厂
         """
         self.plan = plan
-        self.main_thread_id = ""
+        self.main_thread_id = "main"
         self.llm_factory = llm_factory
 
         # 新的多线程 Context 结构
