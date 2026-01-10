@@ -156,9 +156,6 @@ def load_plan_from_template(
     
     plan_data = json.loads(plan_json_str)
     
-    # 提取 tools_limit
-    tools_limit = plan_data.pop("tools_limit", None)
-    
     # 加载为 ExecutionPlan
     plan = load_plan_from_dict(plan_data, allowed_node_types)
     
