@@ -1,6 +1,5 @@
 # llm_linear_executor
 
-llm_linear_executor A lightweight, sequential task execution engine for LLMs. It orchestrates linear plans with context isolation and flexible node scheduling, designed to turn complex workflows into manageable, step-by-step actions
 
 llm_linear_executor 一个专为 LLM 设计的轻量级线性任务执行引擎。它通过上下文隔离和灵活的节点调度，将复杂的工作流转化为可管理的顺序执行步骤。
 

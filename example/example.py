@@ -16,7 +16,6 @@ from langchain_core.tools import tool
 from os import path
 import logging
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
 __file__ = path.dirname(path.abspath(__file__))
 # ==================================================
 # 1. 导入你的工具，使用 langchian @tool包装
@@ -140,54 +139,59 @@ def get_daily_stats(module: str = "all"):
     return sections.get(module, f"错误: 未找到模块 '{module}'。可用选项: {list(sections.keys())}")
 
 tools_map = {"get_daily_stats": get_daily_stats}
-logger.debug(f"1. tools_map ✓ : {tools_map}")
+logger.info(f"1. tools_map ✓ : {tools_map}")
 
-# ==================================================
-# 2. 创建一个langchain的chatmodel
-# ==================================================
+# # ==================================================
+# # 2. 创建一个langchain的chatmodel
+# # ==================================================
 llm = create_qwen_llm(model="qwen-plus-2025-12-01") 
-logger.debug(f"2. llm ✓ ")
+logger.info(f"2. llm ✓ ")
 
-# ==================================================
-# 3. 生成一个plan（可选）
-# ==================================================
+# # ==================================================
+# # 3. 生成一个plan（可选）
+# # ==================================================
 plan = plan_generator(
     task = "总结今天我做了什么",
     skills_path=path.join(__file__, "daily_summary.md"), # 外置的prompt
     llm=llm,
     tools=[get_daily_stats]
 )
-logger.debug(f"3. plan ✓ : {plan}")
+logger.info(f"3. plan ✓ : {plan}")
 
-# ==================================================
-# 4. 保存plan为模板
-# ==================================================
+# # ==================================================
+# # 4. 保存plan为模板
+# # ==================================================
 save_plan_as_template(
     plan=plan,
     output_path=path.join(__file__, "example.json"),
     pattern_name="comprehensive",
     tools_limit={}
 )
-logger.debug(f"4. save_plan_as_template ✓ : {plan}")
+logger.info(f"4. save_plan_as_template ✓ : {plan}")
 
 # ==================================================
 # 5. 加载plan
 # ==================================================
 plan = load_plan_from_template(
     pattern_name="comprehensive",
+    json_path=path.join(__file__, "example.json")
 )
-logger.debug(f"5. load_plan_from_template ✓ : {plan}")
+logger.info(f"5. load_plan_from_template ✓ : {plan}")
 
 # ==================================================
 # 6. 执行plan
 # ==================================================
 executor = Executor(
+    user_message="总结今天我做了什么",
     plan=plan,
     tools_map=tools_map, # 工具函数映射
-    llm=create_llm_factory(model = "qwen-plus-2025-12-01") # 创建chatmodel的函数工程 
+    llm_factory=create_llm_factory(model = "qwen-plus-2025-12-01") # 创建chatmodel的函数工程 
 )
-executor.execute()
-
+output = executor.execute()
+logger.info(f"6. executor.execute() ✓ : {output}")
+# 保存输出 (content字段)
+with open(path.join(__file__, "output.md"), "w", encoding="utf-8") as f:
+    f.write(output["content"])
 
 
 
