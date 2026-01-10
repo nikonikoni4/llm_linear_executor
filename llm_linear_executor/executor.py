@@ -23,30 +23,28 @@ class Executor:
         self,
         plan: ExecutionPlan,
         user_message: str,
-        main_thread_id: str = "main",
         tools_map: dict[str, Callable] | None = None,
         default_tools_limit: int | None = 1,
         llm_factory: Callable[[], any] | None = None
     ):
         """
-        初始化执行器
+        初始化执行器, 默认存在一个main线程，初始消息使用user_message
 
         Args:
             plan: 执行计划
             user_message: 用户消息
-            main_thread_id: 主线程 ID
             tools_map: 工具映射 {tool_name: callable}
             default_tools_limit: 默认工具调用次数限制（每个工具的默认调用次数），None 表示无限制
             llm_factory: LLM 工厂函数，用于创建 LLM 实例。如果不提供，需要自行设置默认工厂
         """
         self.plan = plan
-        self.main_thread_id = main_thread_id
+        self.main_thread_id = ""
         self.llm_factory = llm_factory
 
         # 新的多线程 Context 结构
         self.context: Context = {
             "messages": {
-                main_thread_id: [HumanMessage(content=user_message)]
+                self.main_thread_id: [HumanMessage(content=user_message)]
             },
             "data_out": {},
         }
