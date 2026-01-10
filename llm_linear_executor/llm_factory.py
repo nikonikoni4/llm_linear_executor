@@ -278,7 +278,7 @@ if __name__ == "__main__":
         print(f"   实例创建成功: {llm.model_name}")
     except Exception as e:
         print(f"   创建失败: {e}")
-
+    
     # 测试 4: 默认 LLM
     print("\n4. 测试获取默认 LLM:")
     try:

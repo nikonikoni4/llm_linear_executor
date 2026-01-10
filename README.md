@@ -1,9 +1,22 @@
-# llm_linear_executor
+# llm-linear-executor
 
 
-llm_linear_executor 一个专为 LLM 设计的轻量级线性任务执行引擎。它通过上下文隔离和灵活的节点调度，将复杂的工作流转化为可管理的顺序执行步骤。
+llm-linear-executor 一个专为 LLM 设计的轻量级线性任务执行引擎。它通过上下文隔离和灵活的节点调度，将复杂的工作流转化为可管理的顺序执行步骤。
 
 ---
+## llm-linear-executor可以做什么？
+
+1. llm-linear-executor 完全由数据驱动，对于简单的任务，不需要再写代码（如编写，langgraph等），直接通过编写json文件，即可以快速验证一个workflow是否可行
+2. 可以通过接入tools，来接入自己项目的数据！这个也是做这个项目的初衷！为了验证和调试一个workflow的prompt，通常需要接入数据和工具。为llm-linear-executor提高tools_map,来实现这一点。
+3. llm-linear-executor 支持使用llm自动生成plan(json文件)；通过调用plan_generator()函数，可以快速生成一个plan(json文件) 
+4. 可以使用[simple-llm-playground](https://github.com/nikonikoni4/simple-llm-playground.git)(一个基于llm-linear-executor的qt界面，通过可视化快速生成和调试workflow)；
+
+### 局限性
+1. 目前只是用一个简单的prompt，生成plan.json文件，效果一般，但可以把ExecutionPlan类的定义导出（parser = PydanticOutputParser(pydantic_object=ExecutionPlan) parser.get_format_instructions()），使用其他更强大的模型生成更好的plan，用于快速迭代流程
+2. 当前只有两种节点llm-first和tool-first，缺少router节点，有些情况下只能多创建一条线程，来实现。（在后续更新中会思考解决这个问题）
+
+
+
 
 ## 执行顺序
 按照节点顺序执行，必须一个节点完成之后才能继续下一个节点

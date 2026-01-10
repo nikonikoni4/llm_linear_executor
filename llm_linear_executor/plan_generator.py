@@ -105,7 +105,7 @@ if __name__ == "__main__":
     save_plan_as_template(
         plan=plan,
         date="2026-01-03",
-        output_path=r"data_driving_agent\patterns\test.json",
+        output_path=r"llm_linear_executor\patterns\test.json",
         pattern_name="comprehensive",
         tools_limit=tools_limit
     )
