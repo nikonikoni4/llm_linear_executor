@@ -166,13 +166,21 @@ class Executor:
 
         # 获取当前节点使用的工具列表
         tools_to_limit = set()
+        initial_tool = None
         if node and node.tools:
             tools_to_limit.update(node.tools)
+        # 对于 tool-first 节点，需要包含初始工具（额外+1配额，因为初始调用不应占用LLM限额）
+        if node and node.node_type == "tool-first" and node.initial_tool_name:
+            initial_tool = node.initial_tool_name
+            tools_to_limit.add(initial_tool)
 
         # 应用默认限制到所有相关工具
         if self._default_tools_limit is not None:
             for tool in tools_to_limit:
                 self.tools_usage_limit[tool] = self._default_tools_limit
+            # tool-first 的初始工具额外+1（初始调用不计入LLM限额）
+            if initial_tool:
+                self.tools_usage_limit[initial_tool] += 1
 
         # 如果节点有单独的 tools_limit，覆盖默认值（优先级更高）
         if node and node.tools_limit:
