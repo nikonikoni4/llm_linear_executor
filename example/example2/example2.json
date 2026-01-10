@@ -1,0 +1,20 @@
+{
+    "simple_calc": {
+        "task": "计算任务",
+        "nodes": [
+            {
+                "node_type": "llm-first",
+                "node_name": "Calculator",
+                "thread_id": "main",
+                "task_prompt": "Please calculate 10 + 20 using the tool.",
+                "tools": [
+                    "add"
+                ],
+                "tools_limit": {
+                    "add": 5
+                },
+                "enable_tool_loop": true
+            }
+        ]
+    }
+}

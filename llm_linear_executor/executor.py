@@ -582,7 +582,7 @@ class Executor:
                 raise ValueError(f"未知节点类型: {node.node_type}")
             
             content = handler(node)
-            print(content)
+            #print(content)
             # 如果节点设置了 data_out，根据 data_out_thread 合并到目标线程
             if node.data_out:
                 # 目标线程由 data_out_thread 决定，若没有则默认为 main

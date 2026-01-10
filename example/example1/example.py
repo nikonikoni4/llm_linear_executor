@@ -150,13 +150,13 @@ logger.info(f"2. llm ✓ ")
 # # ==================================================
 # # 3. 生成一个plan（可选）
 # # ==================================================
-plan = plan_generator(
-    task = "总结今天我做了什么",
-    skills_path=path.join(__file__, "daily_summary.md"), # 外置的prompt
-    llm=llm,
-    tools=[get_daily_stats]
-)
-logger.info(f"3. plan ✓ : {plan}")
+# plan = plan_generator(
+#     task = "总结今天我做了什么",
+#     skills_path=path.join(__file__, "daily_summary.md"), # 外置的prompt
+#     llm=llm,
+#     tools=[get_daily_stats]
+# )
+# logger.info(f"3. plan ✓ : {plan}")
 
 # # ==================================================
 # # 4. 保存plan为模板
