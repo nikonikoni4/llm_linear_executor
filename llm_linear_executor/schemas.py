@@ -97,7 +97,11 @@ class NodeDefinition(BaseModel):
         default=False,
         description="是否启用工具调用循环。True时LLM可多次调用工具直到完成任务"
     )
-    
+    tools_limit: dict[str, int] | None = Field(
+        default=None,
+        description="当前节点的工具调用次数限制"
+    )
+
     # ===== tool-first 专用 =====
     initial_tool_name: str | None = Field(
         default=None,
