@@ -101,7 +101,7 @@ def load_plan_from_template(
     date: str | None = None,
     extra_replacements: dict[str, str] | None = None,
     allowed_node_types: set[NodeType] | None = None
-) -> tuple[ExecutionPlan, dict[str, int] | None]:
+) -> ExecutionPlan:
     """
     从 JSON 模板文件加载执行计划
     
@@ -162,7 +162,7 @@ def load_plan_from_template(
     # 加载为 ExecutionPlan
     plan = load_plan_from_dict(plan_data, allowed_node_types)
     
-    return plan, tools_limit
+    return plan
 
 
 # ============================================================================
