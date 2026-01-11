@@ -56,6 +56,8 @@ class Executor:
         self.tools_map = tools_map
 
         # 默认工具使用限制（当节点未设置 tools_limit 时使用）
+        if default_tools_limit is None:
+            default_tools_limit = 1
         self._default_tools_limit = default_tools_limit
         self.tools_usage_limit = {}
         
