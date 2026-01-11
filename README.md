@@ -22,7 +22,12 @@ llm-linear-executor 一个专为 LLM 设计的轻量级线性任务执行引擎�
 ## 快速开始
 
 ### example1
-
+1. 在example1中配置llm模型和函数工厂 
+```python
+from llm_linear_executor.llm_factory import create_llm_factory
+llm_factory = create_llm_factory(api_key="your_api_key",model="your_model",chat_model=ChatOpenAI)
+```
+2. 
 ```python
 python example/example1/example.py
 ```

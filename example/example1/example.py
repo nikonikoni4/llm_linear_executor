@@ -144,6 +144,8 @@ logger.info(f"1. tools_map ✓ : {tools_map}")
 # # ==================================================
 # # 2. 创建一个langchain的chatmodel
 # # ==================================================
+# from langchain_openai import ChatOpenAI
+# llm = ChatOpenAI()
 llm = create_qwen_llm(model="qwen-plus-2025-12-01") 
 logger.info(f"2. llm ✓ ")
 
