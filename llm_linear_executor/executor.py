@@ -6,9 +6,11 @@ from .schemas import (
 )
 from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
 
-from typing import Callable
+from typing import Callable, Awaitable
+import asyncio
 import logging
 logger = logging.getLogger(__name__)
+
 class Executor:
     """
     数据驱动执行器 V2
@@ -16,6 +18,7 @@ class Executor:
     支持特性:
     - 多线程 Context 消息隔离
     - 2 种节点类型分发执行 (llm_auto, tool, query, ) # planning未实现
+    - 异步内核 + 同步包装器
     """
     
 
@@ -69,7 +72,7 @@ class Executor:
         }
         
         # 节点类型 -> 处理函数 映射
-        self._node_handlers: dict[NodeType, Callable[[NodeDefinition], str]] = {
+        self._node_handlers: dict[NodeType, Callable[[NodeDefinition], Awaitable[str]]] = {
             "llm-first": self._execute_llm_first_node,
             "tool-first": self._execute_tool_first_node,
             "planning": self._execute_planning_node,
@@ -331,7 +334,7 @@ class Executor:
     # =========================================================================
     # 工具执行
     # =========================================================================
-    def _execute_tool_call_for_thread(self, tool_call: dict, thread_id: str) -> tuple[bool, str | None]:
+    async def _execute_tool_call_for_thread(self, tool_call: dict, thread_id: str) -> tuple[bool, str | None]:
         """执行工具调用并将结果添加到指定线程"""
         tool_name = tool_call.get("name", "")
         tool_args = tool_call.get("args", {})
@@ -349,7 +352,13 @@ class Executor:
             return False, error_msg
         
         logger.info(f"    - 执行工具: {tool_name}, args: {tool_args}")
-        tool_result = self.tools_map[tool_name].invoke(tool_args)
+        try:
+            # 使用 ainvoke 异步调用工具（LangChain 会自动处理同步工具的线程池兼容）
+            tool_result = await self.tools_map[tool_name].ainvoke(tool_args)
+        except Exception as e:
+            logger.error(f"    ✗ 工具 {tool_name} 执行出错: {str(e)}")
+            tool_result = f"Error executing tool: {str(e)}"
+
         self._consume_tool_usage(tool_name)
         logger.info(f"    - 工具 {tool_name} 剩余调用次数: {self.tools_usage_limit[tool_name]}")
         
@@ -360,7 +369,7 @@ class Executor:
     # 节点处理器
     # =========================================================================
     
-    def _llm_tool_loop(self, node: NodeDefinition, llm) -> str:
+    async def _llm_tool_loop(self, node: NodeDefinition, llm) -> str:
         """
         LLM 工具调用循环
         
@@ -381,7 +390,8 @@ class Executor:
             logger.debug(f"[DEBUG] 第 {round_count} 轮循环")
             
             messages = self._get_thread_messages(node.thread_id)
-            result = llm.invoke(messages)
+            # 使用 ainvoke 异步调用 LLM
+            result = await llm.ainvoke(messages)
             self._accumulate_tokens(result)
             self._add_message_to_thread(node.thread_id, result)
             
@@ -394,7 +404,8 @@ class Executor:
             logger.debug(f"    → LLM 请求调用 {len(result.tool_calls)} 个工具")
             executed = 0
             for tool_call in result.tool_calls:
-                success, _ = self._execute_tool_call_for_thread(tool_call, node.thread_id)
+                # 异步执行工具
+                success, _ = await self._execute_tool_call_for_thread(tool_call, node.thread_id)
                 if success:
                     executed += 1
             
@@ -409,7 +420,7 @@ class Executor:
         logger.debug(f"[DEBUG] 工具循环完成，共 {round_count} 轮")
         return result.content if result else ""
 
-    def _llm_single_call(self, node: NodeDefinition, llm) -> str:
+    async def _llm_single_call(self, node: NodeDefinition, llm) -> str:
         """
         单次 LLM 调用（可能包含一次工具调用）
         """
@@ -418,18 +429,20 @@ class Executor:
         print(node.node_name)
         print(prompt)
         print("="*20)
-        result = llm.invoke(prompt)
+        # 使用 ainvoke 异步调用 LLM
+        result = await llm.ainvoke(prompt)
         self._accumulate_tokens(result)
         self._add_message_to_thread(node.thread_id, result)
         
         # 如果有 tool_calls，执行一次
         if hasattr(result, 'tool_calls') and result.tool_calls:
             for tool_call in result.tool_calls:
-                self._execute_tool_call_for_thread(tool_call, node.thread_id)
+                 # 异步执行工具
+                await self._execute_tool_call_for_thread(tool_call, node.thread_id)
         
         return result.content
 
-    def _execute_llm_first_node(self, node: NodeDefinition) -> str:
+    async def _execute_llm_first_node(self, node: NodeDefinition) -> str:
         """
         LLM-First 节点执行器
 
@@ -462,10 +475,10 @@ class Executor:
         
         if node.enable_tool_loop and node.tools:
             # 启用循环：使用 messages 列表调用
-            final_content = self._llm_tool_loop(node, llm)
+            final_content = await self._llm_tool_loop(node, llm)
         else:
             # 不启用循环：单次调用
-            final_content = self._llm_single_call(node, llm)
+            final_content = await self._llm_single_call(node, llm)
         
         # 处理 data_out
         if node.data_out:
@@ -474,7 +487,7 @@ class Executor:
         
         return final_content
 
-    def _execute_tool_first_node(self, node: NodeDefinition) -> str:
+    async def _execute_tool_first_node(self, node: NodeDefinition) -> str:
         """
         Tool-First 节点执行器
         
@@ -507,7 +520,14 @@ class Executor:
         tool_args = node.initial_tool_args or {}
         logger.info(f"    - 执行初始工具: {node.initial_tool_name}")
         logger.info(f"    - 工具参数: {tool_args}")
-        tool_result = self.tools_map[node.initial_tool_name].invoke(tool_args)
+        try:
+             # 异步执行工具
+            tool_result = await self.tools_map[node.initial_tool_name].ainvoke(tool_args)
+        except Exception as e:
+            msg = f"Error executing initial tool: {str(e)}"
+            logger.error(f"    ✗ {msg}")
+            return msg
+
         self._consume_tool_usage(node.initial_tool_name)
         logger.info(f"    - 工具 {node.initial_tool_name} 剩余调用次数: {self.tools_usage_limit[node.initial_tool_name]}")
         
@@ -530,10 +550,10 @@ class Executor:
             
             if node.enable_tool_loop and node.tools:
                 # 启用循环
-                final_content = self._llm_tool_loop(node, llm)
+                final_content = await self._llm_tool_loop(node, llm)
             else:
                 # 单次调用
-                final_content = self._llm_single_call(node, llm)
+                final_content = await self._llm_single_call(node, llm)
         
         # 处理 data_out
         if node.data_out:
@@ -543,7 +563,7 @@ class Executor:
         return final_content
 
 
-    def _execute_planning_node(self, node: NodeDefinition) -> str:
+    async def _execute_planning_node(self, node: NodeDefinition) -> str:
         """
         规划节点（暂未实现）
         
@@ -560,9 +580,9 @@ class Executor:
     # =========================================================================
     # 主执行方法
     # =========================================================================
-    def execute(self) -> dict:
+    async def aexecute(self) -> dict:
         """
-        执行整个计划
+        [异步] 执行整个计划 (Async Core)
         
         Returns:
             dict: 包含执行结果的字典
@@ -571,7 +591,7 @@ class Executor:
                 - tokens_usage: tokens 使用量统计
                 - data_out: 各线程的输出数据
         """
-        logger.info(f"\n开始执行计划: {self.plan.task}\n")
+        logger.info(f"\\n开始执行计划: {self.plan.task}\\n")
 
         # 重置工具调用次数和 tokens 统计
         self.reset_tools_limit()
@@ -591,7 +611,8 @@ class Executor:
             if not handler:
                 raise ValueError(f"未知节点类型: {node.node_type}")
             
-            content = handler(node)
+            # [核心修改]: 在分发时使用 await
+            content = await handler(node)
             #print(content)
             # 如果节点设置了 data_out，根据 data_out_thread 合并到目标线程
             if node.data_out:
@@ -601,11 +622,11 @@ class Executor:
                 target_thread = node.data_out_thread if node.data_out_thread else self.main_thread_id
                 self._merge_data_out(node.thread_id, target_thread)
         
-        logger.info(f"\n计划执行完成！")
+        logger.info(f"\\n计划执行完成！")
         logger.info(f"📊 Tokens 使用统计:")
         logger.info(f"   - 输入 tokens: {self.tokens_usage['input_tokens']}")
         logger.info(f"   - 输出 tokens: {self.tokens_usage['output_tokens']}")
-        logger.info(f"   - 总计 tokens: {self.tokens_usage['total_tokens']}\n")
+        logger.info(f"   - 总计 tokens: {self.tokens_usage['total_tokens']}\\n")
         
         return {
             "content": content,
@@ -614,71 +635,25 @@ class Executor:
             "data_out": self.context["data_out"]
         }
 
-# =============================================================================
-# 测试代码
-# =============================================================================
-if __name__ == "__main__":
-    # 创建测试计划 - 使用 llm_auto 和 query 节点
-    #
+    def execute(self) -> dict:
+        """
+        [同步] 执行入口（包装器）
+        
+        如果在同步环境中调用，它会启动一个新的事件循环。
+        如果在 Jupyter 或已有 Loop 的环境中，建议直接使用 await executor.aexecute()
+        """
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
 
-    # 配置日志级别，方便调试
-    import logging
-    logging.basicConfig(
-        level=logging.DEBUG,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
+        if loop and loop.is_running():
+            # 场景 A: 已经在异步环境中（例如 Jupyter Notebook 或 FastAPI handler）
+            raise RuntimeError(
+                "检测到已在异步事件循环中运行。请改用 'await executor.aexecute()' "
+                "而不是 'executor.execute()'，或者使用 'nest_asyncio' 库打补丁。"
+            )
+        else:
+            # 场景 B: 标准同步脚本
+            return asyncio.run(self.aexecute())
 
-    import os
-    from load_plans import load_plan_from_template
-    from langchain_core.tools import tool
-    from langchain_openai import ChatOpenAI
-
-    @tool
-    def add(a,b):
-        "加法"
-        return a+b
-
-    tools_map = {
-        "add": add
-    }
-
-    # 创建 LLM 工厂函数
-    def create_llm_factory():
-        """创建 LLM 工厂函数"""
-        api_key = os.getenv("DASHSCOPE_API_KEY") or os.getenv("OPENAI_API_KEY")
-        if not api_key:
-            raise ValueError("请设置环境变量 DASHSCOPE_API_KEY 或 OPENAI_API_KEY")
-
-        return lambda: ChatOpenAI(
-            model="qwen-plus-2025-12-01",
-            openai_api_key=api_key,
-            openai_api_base="https://dashscope.aliyuncs.com/compatible-mode/v1",
-            temperature=0.7
-        )
-
-    # 获取当前脚本所在目录的绝对路径
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    # 构建 json 文件的绝对路径
-    json_path = os.path.join(current_dir, "test_plan", "example", "example.json")
-    plan, tools_limit = load_plan_from_template(json_path=json_path,
-                                              pattern_name="custom")
-
-    executor = Executor(
-        plan,
-        "请帮我总结 2026-01-03 的使用情况",
-        tools_map=tools_map,
-        default_tools_limit=1,
-        llm_factory=create_llm_factory()
-    )
-    result = executor.execute()
-
-    # 格式化输出
-    print("\n" + "=" * 80)
-    print("📊 AI 生成的行为总结")
-    print("=" * 80 + "\n")
-    print(result["content"])
-    print("\n" + "=" * 80)
-    print(f"📈 统计信息：共产生 {sum(len(msgs) for msgs in result['messages'].values())} 条消息")
-    tokens = result["tokens_usage"]
-    print(f"🔢 Tokens 使用: 输入={tokens['input_tokens']}, 输出={tokens['output_tokens']}, 总计={tokens['total_tokens']}")
-    print("=" * 80)

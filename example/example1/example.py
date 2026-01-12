@@ -4,8 +4,9 @@ from os import path
 # Add parent directory to sys.path
 current_dir = path.dirname(path.abspath(__file__))
 parent_dir = path.dirname(current_dir)
-if parent_dir not in sys.path:
-    sys.path.append(parent_dir)
+project_root = path.dirname(parent_dir)
+if project_root not in sys.path:
+    sys.path.append(project_root)
 
 from llm_linear_executor.executor import Executor
 from llm_linear_executor.load_plans import load_plan_from_template
@@ -15,6 +16,7 @@ from llm_linear_executor.llm_factory import create_qwen_llm, create_llm_factory
 from langchain_core.tools import tool
 from os import path
 import logging
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 __file__ = path.dirname(path.abspath(__file__))
 # ==================================================
@@ -163,19 +165,19 @@ logger.info(f"2. llm ✓ ")
 # # ==================================================
 # # 4. 保存plan为模板
 # # ==================================================
-save_plan_as_template(
-    plan=plan,
-    output_path=path.join(__file__, "example.json"),
-    pattern_name="comprehensive",
-    tools_limit={}
-)
-logger.info(f"4. save_plan_as_template ✓ : {plan}")
+# save_plan_as_template(
+#     plan=plan,
+#     output_path=path.join(__file__, "example.json"),
+#     pattern_name="custom",
+#     tools_limit={}
+# )
+# logger.info(f"4. save_plan_as_template ✓ : {plan}")
 
 # ==================================================
 # 5. 加载plan
 # ==================================================
 plan = load_plan_from_template(
-    pattern_name="comprehensive",
+    pattern_name="custom",
     json_path=path.join(__file__, "example.json")
 )
 logger.info(f"5. load_plan_from_template ✓ : {plan}")
@@ -183,17 +185,43 @@ logger.info(f"5. load_plan_from_template ✓ : {plan}")
 # ==================================================
 # 6. 执行plan
 # ==================================================
-executor = Executor(
-    user_message="总结今天我做了什么",
-    plan=plan,
-    tools_map=tools_map, # 工具函数映射
-    llm_factory=create_llm_factory(model = "qwen-plus-2025-12-01") # 创建chatmodel的函数工程 
-)
-output = executor.execute()
-logger.info(f"6. executor.execute() ✓ : {output}")
-# 保存输出 (content字段)
-with open(path.join(__file__, "output.md"), "w", encoding="utf-8") as f:
-    f.write(output["content"])
+# executor = Executor(
+#     user_message="总结今天我做了什么",
+#     plan=plan,
+#     tools_map=tools_map, # 工具函数映射
+#     llm_factory=create_llm_factory(model = "qwen-plus-2025-12-01") # 创建chatmodel的函数工程 
+# )
+# output = executor.execute()
+# logger.info(f"6. executor.execute() ✓ : {output}")
+# # 保存输出 (content字段)
+# with open(path.join(__file__, "output.md"), "w", encoding="utf-8") as f:
+#     f.write(output["content"])
 
 
+
+# ==================================================
+# 7. 异步调用
+# ==================================================
+
+async def main():
+    logger.info("-" * 50)
+    logger.info("7. 开始异步执行演示 (Async Execution)")
+    
+    # 重新创建一个 executor 实例 (或者重用上面的配置)
+    async_executor = Executor(
+        user_message="总结今天我做了什么",
+        plan=plan,
+        tools_map=tools_map,
+        llm_factory=create_llm_factory(model="qwen-plus-2025-12-01")
+    )
+    
+    # 使用 await 调用 aexecute()
+    result = await async_executor.aexecute()
+    logger.info(f"7. async_executor.aexecute() ✓ : {result['content'][:100]}...") # 打印前100个字符
+    return result
+
+# 运行异步主函数
+if __name__ == "__main__":
+  import asyncio
+  asyncio.run(main())
 
