@@ -9,9 +9,7 @@ if project_root not in sys.path:
     sys.path.append(project_root)
 
 from llm_linear_executor.executor import Executor
-from llm_linear_executor.load_plans import load_plan_from_template
-from llm_linear_executor.save_plan import save_plan_as_template
-from llm_linear_executor.plan_generator import plan_generator
+from llm_linear_executor.os_plan import load_plan_from_template
 from llm_linear_executor.llm_factory import create_qwen_llm, create_llm_factory
 from langchain_core.tools import tool
 from os import path
@@ -154,36 +152,21 @@ logger.info(f"2. llm ✓ ")
 # # ==================================================
 # # 3. 生成一个plan（可选）
 # # ==================================================
-# plan = plan_generator(
-#     task = "总结今天我做了什么",
-#     skills_path=path.join(__file__, "daily_summary.md"), # 外置的prompt
-#     llm=llm,
-#     tools=[get_daily_stats]
-# )
-# logger.info(f"3. plan ✓ : {plan}")
-
-# # ==================================================
-# # 4. 保存plan为模板
-# # ==================================================
-# save_plan_as_template(
-#     plan=plan,
-#     output_path=path.join(__file__, "example.json"),
-#     pattern_name="custom",
-#     tools_limit={}
-# )
-# logger.info(f"4. save_plan_as_template ✓ : {plan}")
+# 
+# 再一个AI IDE中使用plan-creator-zh/en 让模型生成一个plan
+# 
 
 # ==================================================
-# 5. 加载plan
+# 4. 加载plan
 # ==================================================
 plan = load_plan_from_template(
     pattern_name="custom",
     json_path=path.join(__file__, "example.json")
 )
-logger.info(f"5. load_plan_from_template ✓ : {plan}")
+logger.info(f"4. load_plan_from_template ✓ : {plan}")
 
 # ==================================================
-# 6. 执行plan
+# 5. 执行plan
 # ==================================================
 # executor = Executor(
 #     user_message="总结今天我做了什么",
@@ -200,12 +183,12 @@ logger.info(f"5. load_plan_from_template ✓ : {plan}")
 
 
 # ==================================================
-# 7. 异步调用
+# 5. 异步调用
 # ==================================================
 
 async def main():
     logger.info("-" * 50)
-    logger.info("7. 开始异步执行演示 (Async Execution)")
+    logger.info("5. 开始异步执行演示 (Async Execution)")
     
     # 重新创建一个 executor 实例 (或者重用上面的配置)
     async_executor = Executor(

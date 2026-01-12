@@ -113,19 +113,19 @@ class NodeDefinition(BaseModel):
     )
     
     # ===== 数据输入配置 =====
-    data_in_thread: str | None = Field(
-        default=None,
-        description="输入数据来源线程ID，None时使用main线程"
+    data_in_thread: str  = Field(
+        default="main",
+        description="输入数据来源线程ID，默认main"
     )
-    data_in_slice: tuple[int | None, int | None] | None = Field(
-        default=None,
-        description="消息切片范围 [start, end)，None时取最后一条消息"
+    data_in_slice: tuple[int | None, int | None]  = Field(
+        default=(0,1),
+        description="消息切片范围 [start, end)，默认取第一条消息"
     )
 
     # ===== 数据输出配置 =====
-    data_out_thread: str | None = Field(
-        default=None,
-        description="输出合并的目标线程ID，None时使用main线程"
+    data_out_thread: str = Field(
+        default="main",
+        description="输出合并的目标线程ID，默认main"
     )
     data_out: bool = Field(
         default=False,
@@ -325,7 +325,7 @@ if __name__ == "__main__":
     # print(f"   格式说明:\n{sub_parser.get_format_instructions()}...")
 
     import os
-    from load_plans import load_plan_from_template
+    from os_plan import load_plan_from_template
     # 获取当前脚本所在目录的绝对路径
     current_dir = os.path.dirname(os.path.abspath(__file__))
     # 构建 json 文件的绝对路径

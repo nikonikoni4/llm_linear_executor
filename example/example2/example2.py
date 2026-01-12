@@ -56,7 +56,7 @@ llm_factory = create_llm_factory(chat_model=ChatOpenAI)
 
 # 加载指定模版
 # 注意：第二个参数 "simple_calc" 对应 json 中的 key
-plan = load_plan_from_template(os.path.join(__file__, "example2.json"), "simple_calc")
+plan = load_plan_from_template(os.path.join(__file__, "example2.json"), pattern_name="simple_calc")
 
 # 3. 执行
 executor = Executor( 

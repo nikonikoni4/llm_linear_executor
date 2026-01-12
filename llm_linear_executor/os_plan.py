@@ -98,8 +98,7 @@ def load_plan_from_json_str(
 def load_plan_from_template(
     json_path: str | Path,
     pattern_name: str,
-    date: str | None = None,
-    extra_replacements: dict[str, str] | None = None,
+    replacements: dict[str, str] | None = None,
     allowed_node_types: set[NodeType] | None = None
 ) -> ExecutionPlan:
     """
@@ -146,12 +145,9 @@ def load_plan_from_template(
     # 替换占位符
     plan_json_str = json.dumps(plan_data, ensure_ascii=False)
     
-    if date is not None:
-        plan_json_str = plan_json_str.replace("{date}", date)
-    
     # 替换额外的占位符
-    if extra_replacements:
-        for placeholder, actual_value in extra_replacements.items():
+    if replacements:
+        for placeholder, actual_value in replacements.items():
             plan_json_str = plan_json_str.replace(placeholder, actual_value)
     
     plan_data = json.loads(plan_json_str)
@@ -160,6 +156,51 @@ def load_plan_from_template(
     plan = load_plan_from_dict(plan_data, allowed_node_types)
     
     return plan
+
+def save_plan_to_json(
+        plan: ExecutionPlan, 
+        output_path: str | Path,
+        pattern_name: str = "custom",
+        placeholders: dict[str, str] | None = None):
+    """
+    将 ExecutionPlan 保存到 JSON 文件
+    
+    Args:
+        plan: ExecutionPlan 对象
+        output_path: JSON 文件路径
+        pattern_name: 模板名称
+        placeholders: 占位符替换
+    """
+    if isinstance(output_path, str):
+        output_path = Path(output_path)
+
+    if not isinstance(plan, ExecutionPlan):
+        logger.error(f"传入的plan不是ExecutionPlan对象，而是{type(plan)}")
+        return
+    # 将plan 转化为字典
+    plan_dict = plan.model_dump() # 不排除默认值和 None
+
+    # 判断output是否存在
+    if output_path.exists():
+        # 读取文件内容
+        with open(output_path, "r", encoding="utf-8") as f:
+            plans = json.load(f) 
+        if isinstance(plans, dict):
+            plans[pattern_name] = plan_dict
+        else:
+            logger.warning("plans is not a dict, will overwrite it")
+            plans = {pattern_name: plan_dict}
+    else:
+        plans = {pattern_name: plan_dict}
+    plans_str = json.dumps(plans, ensure_ascii=False, indent=2)
+
+    # 替换实体值为占位符
+    if placeholders:
+        for placeholder, actual_value in placeholders.items():
+            plans_str = plans_str.replace(actual_value, placeholder)
+
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write(plans_str)
 
 
 # ============================================================================
