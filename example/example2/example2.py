@@ -42,7 +42,7 @@ def add(a: int, b: int) -> int:
 
 from langchain_openai import ChatOpenAI
 from llm_linear_executor.executor import Executor
-from llm_linear_executor.load_plans import load_plan_from_template
+from llm_linear_executor.os_plan import load_plan_from_template
 __file__ = os.path.dirname(os.path.abspath(__file__))
 # 准备依赖
 tools_map = {"add": add}
