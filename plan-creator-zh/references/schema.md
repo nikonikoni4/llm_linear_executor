@@ -16,7 +16,7 @@
 | `initial_tool_name` | `string` | **仅 tool-first** | - | 初始执行的工具（tool-first 必填） |
 | `initial_tool_args` | `object` | 否 | `null` | 初始工具调用的参数 |
 | `data_in_thread` | `string` | 否 | `"main"` | 数据注入的源线程 ID（仅限新线程） |
-| `data_in_slice` | `array` | 否 | `null` | 消息片段范围 `[start, end)`，null 表示仅最后一条消息 |
+| `data_in_slice` | `array` | 否 | `[0, 1]` | 消息片段范围 `[start, end)`，默认仅第一条消息 |
 | `data_out` | `boolean` | 否 | `false` | 是否将结果输出到 data_out 字典 |
 | `data_out_thread` | `string` | 否 | `"main"` | 合并输出的目标线程 ID |
 | `data_out_description` | `string` | 否 | `""` | 输出内容的前缀 |

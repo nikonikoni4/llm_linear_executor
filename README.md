@@ -100,22 +100,22 @@ print(f"最终结果: {result['content']}")
 
 ### 1. 节点 Schema 定义
 
-| 字段 | 类型 | 必填 | 说明 |
-| :--- | :--- | :--- | :--- |
-| `node_type` | `str` | 是 | 节点类型: `"llm-first"` 或 `"tool-first"` |
-| `node_name` | `str` | 是 | 节点名称，用于日志记录和调试 |
-| `thread_id` | `str` | 是 | 当前节点运行所在的线程ID |
-| `task_prompt` | `str` | 否 | LLM的任务描述 (Prompt) |
-| `tools` | `list[str]` | 否 | 该节点可调用的工具名称列表 |
-| `enable_tool_loop` | `bool` | 否 | 是否允许LLM多次循环调用工具 (默认 False) |
-| `tools_limit` | `dict` | 否 | 工具调用次数限制配置, 例如 `{"web_search": 1}` |
-| `initial_tool_name` | `str` | **tool-first必填** | 指定初始执行的工具名称 |
-| `initial_tool_args` | `dict` | 否 | 初始工具调用的参数 |
-| `data_in_thread` | `str` | 否 | 输入数据来源的线程ID (默认 main) |
-| `data_in_slice` | `list` | 否 | 输入消息的切片范围 `[start, end)` (默认取最后一条) |
-| `data_out` | `bool` | 否 | 是否将节点执行结果输出 (默认 False) |
-| `data_out_thread` | `str` | 否 | 输出结果合并到的目标线程ID (默认 main) |
-| `data_out_description`| `str` | 否 | 输出结果的描述前缀 |
+| 字段 | 类型 | 是否必填 | 默认值 | 描述 |
+|-------|------|----------|---------|-------------|
+| `node_type` | `string` | 是 | - | 节点类型：`"llm-first"` 或 `"tool-first"` |
+| `node_name` | `string` | 是 | - | 用于日志记录和调试的节点名称 |
+| `thread_id` | `string` | 是 | - | 执行上下文的线程 ID |
+| `task_prompt` | `string` | 否 | `""` | LLM 任务描述。为空则跳过 LLM 执行 |
+| `tools` | `string[]` | 否 | `null` | 该节点可用的工具名称列表 |
+| `enable_tool_loop` | `boolean` | 否 | `false` | 允许执行多个工具调用直至任务完成 |
+| `tools_limit` | `object` | 否 | `null` | 每个工具的最大调用次数：`{"tool_name": 5}` |
+| `initial_tool_name` | `string` | **仅 tool-first** | - | 初始执行的工具（tool-first 必填） |
+| `initial_tool_args` | `object` | 否 | `null` | 初始工具调用的参数 |
+| `data_in_thread` | `string` | 否 | `"main"` | 数据注入的源线程 ID（仅限新线程） |
+| `data_in_slice` | `array` | 否 | `[0, 1]` | 消息片段范围 `[start, end)`，默认仅第一条消息 |
+| `data_out` | `boolean` | 否 | `false` | 是否将结果输出到 data_out 字典 |
+| `data_out_thread` | `string` | 否 | `"main"` | 合并输出的目标线程 ID |
+| `data_out_description` | `string` | 否 | `""` | 输出内容的前缀 |
 
 ### 2. 节点类型与特殊行为
 
@@ -137,7 +137,7 @@ print(f"最终结果: {result['content']}")
 | 配置项 | 作用 | 默认值 |
 |--------|------|--------|
 | `data_in_thread` | 指定输入数据来源线程ID | `main` |
-| `data_in_slice` | 指定消息切片范围 `[start, end)` | 取最后一条消息 |
+| `data_in_slice` | 指定消息切片范围 `[start, end)` | 默认取第一条消息 |
 | `data_out` | 是否将结果输出到data_out字典 | `False` |
 | `data_out_thread` | 指定输出合并的目标线程ID | `main` |
 | `data_out_description` | 输出内容的描述前缀 | `""` |
@@ -158,7 +158,7 @@ def _create_thread(self, thread_id: str, node: NodeDefinition | None = None):
     if node.data_in_slice:
         injected = source_msgs[start:end]  # 使用指定切片
     else:
-        injected = [source_msgs[-1]]       # 默认取最后一条
+        injected = [source_msgs[-1]]       # 默认取最后一条（仅在 data_in_slice 为 None 时触发）
 ```
 
 **示例：**

@@ -123,7 +123,7 @@ class Executor:
                     if node.data_in_slice:
                         # 使用指定的切片范围
                         start, end = node.data_in_slice
-                        injected = source_msgs[start:end]
+                        injected = source_msgs[start:end] # list切片可以使用None:None 这种形式
                     else:
                         # 默认：取最后一条消息
                         injected = [source_msgs[-1]]

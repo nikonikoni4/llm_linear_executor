@@ -16,7 +16,7 @@ Complete field specification for nodes in `plan.json`.
 | `initial_tool_name` | `string` | **tool-first only** | - | Initial tool to execute (required for tool-first) |
 | `initial_tool_args` | `object` | No | `null` | Arguments for initial tool call |
 | `data_in_thread` | `string` | No | `"main"` | Source thread ID for data injection (new threads only) |
-| `data_in_slice` | `array` | No | `null` | Message slice range `[start, end)`, null = last message only |
+| `data_in_slice` | `array` | No | `[0, 1]` | Message slice range `[start, end)`, default = first message only |
 | `data_out` | `boolean` | No | `false` | Whether to output result to data_out dict |
 | `data_out_thread` | `string` | No | `"main"` | Target thread ID for merging output |
 | `data_out_description` | `string` | No | `""` | Prefix for output content |
