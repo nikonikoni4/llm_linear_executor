@@ -30,12 +30,14 @@ from .schemas import (
 )
 
 
+
 # ============================================================================
-# 核心加载函数
+# 核心加载函数（更该，增加 schema 参数）
 # ============================================================================
 def load_plan_from_dict(
     plan_data: dict[str, Any],
-    allowed_node_types: set[NodeType] | None = None
+    allowed_node_types: set[NodeType] | None = None,
+    schema: Type[ExecutionPlan] | None = None
 ) -> ExecutionPlan:
     """
     从字典加载 ExecutionPlan
@@ -43,21 +45,16 @@ def load_plan_from_dict(
     Args:
         plan_data: 包含 task 和 nodes 的字典数据
         allowed_node_types: 允许的节点类型，None 表示使用所有类型
+        schema: (可选) 指定用于解析的 Pydantic 模型类，必须继承自 ExecutionPlan。
+                如果提供了 schema，将优先使用该 schema 进行解析（此时 allowed_node_types 仅用于简单的类型检查）。
         
     Returns:
         ExecutionPlan 对象
         
     Raises:
         ValueError: 节点类型不在允许范围内
-        
-    Example:
-        >>> data = {
-        ...     "task": "示例任务",
-        ...     "nodes": [{"node_type": "llm-first", "node_name": "test", ...}]
-        ... }
-        >>> plan = load_plan_from_dict(data)
     """
-    # 如果指定了允许的节点类型，进行验证
+    # 1. 基础验证：如果指定了 allowed_node_types，先检查数据中的 node_type 是否合规
     if allowed_node_types is not None:
         for node in plan_data.get("nodes", []):
             node_type = node.get("node_type")
@@ -66,40 +63,40 @@ def load_plan_from_dict(
                     f"节点类型 '{node_type}' 不在允许范围内，"
                     f"允许的类型: {allowed_node_types}"
                 )
-        # 使用动态 schema 验证
-        schema = create_execution_plan_schema(allowed_node_types)
-        return schema(**plan_data)
     
-    return ExecutionPlan(**plan_data)
+    # 2. 决定使用的 Schema
+    if schema is not None:
+        # 如果调用方显式注入了 Schema (例如前端传入 GuiExecutionPlan)
+        target_schema = schema
+    elif allowed_node_types is not None:
+        # 如果没传 schema 但限制了类型，动态生成
+        target_schema = create_execution_plan_schema(allowed_node_types)
+    else:
+        # 默认使用通用 ExecutionPlan
+        target_schema = ExecutionPlan
+
+    # 3. 解析
+    return target_schema(**plan_data)
 
 
 def load_plan_from_json_str(
     json_str: str,
-    allowed_node_types: set[NodeType] | None = None
+    allowed_node_types: set[NodeType] | None = None,
+    schema: Type[ExecutionPlan] | None = None
 ) -> ExecutionPlan:
     """
     从 JSON 字符串加载 ExecutionPlan
-    
-    Args:
-        json_str: JSON 格式的字符串
-        allowed_node_types: 允许的节点类型
-        
-    Returns:
-        ExecutionPlan 对象
-        
-    Example:
-        >>> json_str = '{"task": "test", "nodes": []}'
-        >>> plan = load_plan_from_json_str(json_str)
     """
     plan_data = json.loads(json_str)
-    return load_plan_from_dict(plan_data, allowed_node_types)
+    return load_plan_from_dict(plan_data, allowed_node_types, schema=schema)
 
 
 def load_plan_from_template(
     json_path: str | Path,
     pattern_name: str,
     replacements: dict[str, str] | None = None,
-    allowed_node_types: set[NodeType] | None = None
+    allowed_node_types: set[NodeType] | None = None,
+    schema: Type[ExecutionPlan] | None = None
 ) -> ExecutionPlan:
     """
     从 JSON 模板文件加载执行计划
@@ -107,23 +104,12 @@ def load_plan_from_template(
     Args:
         json_path: JSON 模板文件路径
         pattern_name: 要加载的模式名称
-        date: 替换 {date} 占位符的实际日期 (可选)
-        extra_replacements: 额外的占位符替换，格式 {"{placeholder}": "actual_value"}
+        replacements: 占位符替换，格式 {"{placeholder}": "actual_value"}
         allowed_node_types: 允许的节点类型
+        schema: (可选) 指定用于解析的 Pydantic 模型类
         
     Returns:
-        tuple[ExecutionPlan, dict | None]: (执行计划, 工具限制配置)
-        
-    Raises:
-        FileNotFoundError: 文件不存在
-        ValueError: pattern_name 不存在或节点类型不允许
-        
-    Example:
-        >>> plan, tools_limit = load_plan_from_template(
-        ...     json_path="patterns/daily.json",
-        ...     pattern_name="simple",
-        ...     date="2026-01-07"
-        ... )
+        ExecutionPlan 对象
     """
     if isinstance(json_path, str):
         json_path = Path(json_path)
@@ -152,47 +138,52 @@ def load_plan_from_template(
     
     plan_data = json.loads(plan_json_str)
     
-    # 加载为 ExecutionPlan
-    plan = load_plan_from_dict(plan_data, allowed_node_types)
+    # 加载为 ExecutionPlan (或其子类)
+    plan = load_plan_from_dict(plan_data, allowed_node_types, schema=schema)
     
     return plan
 
-def save_plan_to_json(
+def save_plan_to_template(
         plan: ExecutionPlan, 
         output_path: str | Path,
         pattern_name: str = "custom",
         placeholders: dict[str, str] | None = None):
     """
     将 ExecutionPlan 保存到 JSON 文件
-    
-    Args:
-        plan: ExecutionPlan 对象
-        output_path: JSON 文件路径
-        pattern_name: 模板名称
-        placeholders: 占位符替换
     """
     if isinstance(output_path, str):
         output_path = Path(output_path)
 
-    if not isinstance(plan, ExecutionPlan):
-        logger.error(f"传入的plan不是ExecutionPlan对象，而是{type(plan)}")
-        return
-    # 将plan 转化为字典
-    plan_dict = plan.model_dump() # 不排除默认值和 None
+    if not isinstance(plan, ExecutionPlan): # 这里的 isinstance 对子类也返回 True
+        # 注意：此处仅仅是简单的类型检查，实际上 Pydantic 对象都应该兼容
+        logger.error(f"传入的 plan 不是 ExecutionPlan 对象 (或其子类)，而是 {type(plan)}")
+        # 即使报错也可以尝试继续，或者直接 return
+        # return 
+        pass 
 
-    # 判断output是否存在
+    # 将 plan 转化为字典
+    # model_dump() 会根据对象的实际类型（ExecutionPlan 或 GuiExecutionPlan）来导出
+    # 如果是 GuiExecutionPlan，这里就会包含 x, y 等字段
+    plan_dict = plan.model_dump() 
+
+    # 判断 output 是否存在
     if output_path.exists():
         # 读取文件内容
         with open(output_path, "r", encoding="utf-8") as f:
-            plans = json.load(f) 
+            try:
+                plans = json.load(f) 
+            except json.JSONDecodeError:
+                plans = {}
+        
         if isinstance(plans, dict):
             plans[pattern_name] = plan_dict
         else:
-            logger.warning("plans is not a dict, will overwrite it")
+            logger.warning("plans file content is not a dict, will overwrite it")
             plans = {pattern_name: plan_dict}
     else:
         plans = {pattern_name: plan_dict}
-    plans_str = json.dumps(plans, ensure_ascii=False, indent=2)
+    
+    plans_str = json.dumps(plans, ensure_ascii=False, indent=4)
 
     # 替换实体值为占位符
     if placeholders:
