@@ -103,7 +103,7 @@ def load_plan_from_template(
     
     Args:
         json_path: JSON 模板文件路径
-        pattern_name: 要加载的模式名称
+        pattern_name: 要加载的模式名称  
         replacements: 占位符替换，格式 {"{placeholder}": "actual_value"}
         allowed_node_types: 允许的节点类型
         schema: (可选) 指定用于解析的 Pydantic 模型类
@@ -142,6 +142,55 @@ def load_plan_from_template(
     plan = load_plan_from_dict(plan_data, allowed_node_types, schema=schema)
     
     return plan
+
+
+def load_plans_from_templates(
+    json_path: str | Path,
+    replacements: dict[str, str] | None = None,
+    allowed_node_types: set[NodeType] | None = None,
+    schema: Type[ExecutionPlan] | None = None
+) -> dict[str, ExecutionPlan]:
+    """
+    从 JSON 模板文件加载所有执行计划
+    
+    Args:
+        json_path: JSON 模板文件路径
+        replacements: 占位符替换，格式 {"{placeholder}": "actual_value"}
+        allowed_node_types: 允许的节点类型
+        schema: (可选) 指定用于解析的 Pydantic 模型类
+        
+    Returns:
+        dict[str, ExecutionPlan]: pattern_name 到 ExecutionPlan 的映射
+    """
+    if isinstance(json_path, str):
+        json_path = Path(json_path)
+    
+    if not json_path.exists():
+        raise FileNotFoundError(f"JSON 文件不存在: {json_path}")
+    
+    # 读取 JSON 模板
+    with open(json_path, "r", encoding="utf-8") as f:
+        all_patterns = json.load(f)
+        
+    results = {}
+    
+    for pattern_name, plan_data in all_patterns.items():
+        # 替换占位符
+        plan_json_str = json.dumps(plan_data, ensure_ascii=False)
+        
+        # 替换额外的占位符
+        if replacements:
+            for placeholder, actual_value in replacements.items():
+                plan_json_str = plan_json_str.replace(placeholder, actual_value)
+        
+        plan_data = json.loads(plan_json_str)
+        
+        # 加载为 ExecutionPlan (或其子类)
+        plan = load_plan_from_dict(plan_data, allowed_node_types, schema=schema)
+        results[pattern_name] = plan
+    
+    return results
+
 
 def save_plan_to_template(
         plan: ExecutionPlan, 
