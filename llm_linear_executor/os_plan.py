@@ -19,7 +19,7 @@ Plan 读取函数
 """
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, Type
 
 from .schemas import (
     ExecutionPlan, 

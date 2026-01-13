@@ -8,7 +8,7 @@ from langchain_core.output_parsers import PydanticOutputParser
 # ============================================================================
 # 1. llm-first: LLM先执行，可选工具调用
 # 2. tool-first: 工具先执行，然后LLM分析
-# 3. planning: 规划节点，生成子计划并递归执行
+# 3. planning: 规划节点，生成子计划并递归执行（未实现）
 # ============================================================================
 
 NodeType = Literal["llm-first", "tool-first"] # , "planning"
