@@ -23,7 +23,7 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = https://github.com/nikonikoni4/llm_linear_executor.git
+Homepage = "https://github.com/nikonikoni4/llm_linear_executor.git"
 
 [tool.setuptools.packages.find]
 where = ["."]
