@@ -330,6 +330,6 @@ if __name__ == "__main__":
     current_dir = os.path.dirname(os.path.abspath(__file__))
     # 构建 json 文件的绝对路径
     json_path = os.path.join(current_dir, "test_plan", "example", "example.json")
-    plan, tools_limit = load_plan_from_template(json_path=json_path,
+    plan = load_plan_from_template(json_path=json_path,
                                               pattern_name="custom")
     plan.nodes[0].tools_limit 

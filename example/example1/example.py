@@ -192,7 +192,6 @@ async def main():
     
     # 重新创建一个 executor 实例 (或者重用上面的配置)
     async_executor = Executor(
-        user_message="总结今天我做了什么",
         plan=plan,
         tools_map=tools_map,
         llm_factory=create_llm_factory(model="qwen-plus-2025-12-01")

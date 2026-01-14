@@ -61,7 +61,6 @@ plan = load_plan_from_template(os.path.join(__file__, "example2.json"), pattern_
 # 3. 执行
 executor = Executor( 
     plan=plan, 
-    user_message="Start calculation",
     tools_map=tools_map,
     llm_factory=llm_factory
 )

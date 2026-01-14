@@ -440,16 +440,16 @@ if __name__ == "__main__":
     # 3. 测试从模板加载
     print("\n3. 从模板加载 plan:")
     try:
-        plan, tools_limit = load_plan_from_template(
+        plan = load_plan_from_template(
             example_path,
             pattern_name="simple",
-            date="2026-01-07"
+            replacements={"date": "2026-01-07"}
         )
         print(f"   任务: {plan.task}")
         print(f"   节点数量: {len(plan.nodes)}")
         for node in plan.nodes:
             print(f"   - {node.node_name} ({node.node_type})")
-        print(f"   工具限制: {tools_limit}")
+        # print(f"   工具限制: {tools_limit}")
     except Exception as e:
         print(f"   错误: {e}")
     
