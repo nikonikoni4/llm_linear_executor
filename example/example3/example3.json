@@ -1,5 +1,6 @@
 {
     "custom": {
+        "task": "run1",
         "nodes": [
             {
                 "node_name": "main",
@@ -9,15 +10,8 @@
                 "fixed": true,
                 "thread_view_index": 0,
                 "id": 1,
-                "tools": null,
-                "tools_limit": null,
                 "enable_tool_loop": false,
-                "initial_tool_name": null,
-                "initial_tool_args": null,
-                "data_in_thread": null,
-                "data_in_slice": null,
                 "data_out": false,
-                "data_out_thread": null,
                 "data_out_description": "",
                 "temperature": 0.7,
                 "top_p": 0.9,
@@ -38,13 +32,8 @@
                     -1,
                     -1
                 ],
-                "tools": null,
-                "tools_limit": null,
                 "enable_tool_loop": false,
-                "initial_tool_name": null,
-                "initial_tool_args": null,
                 "data_out": false,
-                "data_out_thread": null,
                 "data_out_description": "",
                 "temperature": 0.7,
                 "top_p": 0.9,
