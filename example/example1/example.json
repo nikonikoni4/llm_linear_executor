@@ -6,7 +6,7 @@
         "node_type": "llm-first",
         "node_name": "Main Start",
         "thread_id": "main",
-        "task_prompt": "Start of main thread",
+        "task_prompt": "",
         "enable_tool_loop": false,
         "data_in_thread": "main",
         "data_in_slice": [
