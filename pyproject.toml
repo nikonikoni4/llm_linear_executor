@@ -18,8 +18,8 @@ classifiers = [
 ]
 dependencies = [
     "pydantic>=2.0.0",
-    "openai>=1.0.0",
-    # Add other dependencies here (e.g. PySide6 if using UI components)
+    "langchain-core>=0.1.20",
+    "langchain-openai>=0.0.5",
 ]
 
 [project.urls]
