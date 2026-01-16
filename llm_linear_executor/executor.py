@@ -375,14 +375,13 @@ class Executor:
         """
         # 添加任务 prompt 到线程
         tools_limit_prompt = self._tools_limit_prompt(node.tools)
-        initial_task_prompt = f"""工具可调用次数限制，请合理安排工具调用:
-{tools_limit_prompt}
-你需要按照下面要求完成任务：
-{node.task_prompt}"""
+        initial_task_prompt = self._get_prompt(node)
         self._add_message_to_thread(node.thread_id, HumanMessage(content=initial_task_prompt))
         
         result = None
         round_count = 0
+        exit_due_to_tools_exhausted = False  # 标记是否因工具用完而退出
+        
         while True:
             round_count += 1
             logger.debug(f"[DEBUG] 第 {round_count} 轮循环")
@@ -407,13 +406,26 @@ class Executor:
                 if success:
                     executed += 1
             
-            # 无成功执行或工具用完，结束
+            # 无成功执行，结束
             if executed == 0:
                 logger.debug(f"    → 本轮没有成功执行任何工具")
                 break
+            
+            # 工具用完，标记并退出循环
             if not self._has_available_tools(node.tools):
                 logger.debug(f"    → 所有工具调用次数已用完")
+                exit_due_to_tools_exhausted = True
                 break
+        
+        # 如果是因为工具用完退出，需要再调用一次 LLM 对工具结果进行最终分析
+        if exit_due_to_tools_exhausted:
+            logger.debug(f"    → 工具用完，进行最终 LLM 分析")
+            messages = self._get_thread_messages(node.thread_id)
+            # 创建不带工具的 LLM 进行最终分析（避免再次请求工具）
+            final_llm = self.llm_factory()
+            result = await final_llm.ainvoke(messages)
+            self._accumulate_tokens(result)
+            self._add_message_to_thread(node.thread_id, result)
         
         logger.debug(f"[DEBUG] 工具循环完成，共 {round_count} 轮")
         return result.content if result else ""
@@ -510,6 +522,13 @@ class Executor:
         if not self._can_use_tool(node.initial_tool_name):
             error_msg = f"工具 {node.initial_tool_name} 调用次数已用完"
             logger.info(f"    ✗ {error_msg}")
+            # 先添加模拟的 AIMessage(tool_calls)
+            self._add_message_to_thread(node.thread_id,
+                AIMessage(content="", tool_calls=[{
+                    "name": node.initial_tool_name,
+                    "args": node.initial_tool_args or {},
+                    "id": "initial_tool"
+                }]))
             self._add_message_to_thread(node.thread_id,
                 ToolMessage(content=error_msg, tool_call_id="initial_tool"))
             return error_msg
@@ -528,6 +547,15 @@ class Executor:
 
         self._consume_tool_usage(node.initial_tool_name)
         logger.info(f"    - 工具 {node.initial_tool_name} 剩余调用次数: {self.tools_usage_limit[node.initial_tool_name]}")
+        
+        # 添加模拟的 AIMessage(tool_calls)，确保消息格式符合 API 规范
+        # 这样后续节点使用 _llm_tool_loop 时，ToolMessage 会有对应的 tool_calls
+        self._add_message_to_thread(node.thread_id,
+            AIMessage(content="", tool_calls=[{
+                "name": node.initial_tool_name,
+                "args": tool_args,
+                "id": "initial_tool"
+            }]))
         
         # 添加工具结果到上下文
         self._add_message_to_thread(node.thread_id,
