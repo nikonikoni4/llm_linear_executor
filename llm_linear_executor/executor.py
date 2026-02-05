@@ -5,6 +5,7 @@ from .schemas import (
     Context, NodeDefinition, ExecutionPlan, NodeType
 )
 from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
+from .parse_utils import parse_token_usage
 
 from typing import Callable, Awaitable
 import asyncio
@@ -198,55 +199,26 @@ class Executor:
         }
     
     def _accumulate_tokens(self, result) -> None:
-        """累加 tokens 使用量"""
+        """累加 tokens 使用量（使用统一的 parse_token_usage 函数）"""
         if not result:
             logger.debug("    ⚠️  _accumulate_tokens: result 为空，跳过统计")
             return
 
-        tokens_added = False
+        # 使用统一的 parse_token_usage 函数解析
+        usage = parse_token_usage(result)
 
-        # 尝试从 response_metadata 获取 token usage
-        if hasattr(result, 'response_metadata') and 'token_usage' in result.response_metadata:
-            token_usage = result.response_metadata['token_usage']
-            input_tokens = token_usage.get('input_tokens', 0)
-            output_tokens = token_usage.get('output_tokens', 0)
-            total_tokens = token_usage.get('total_tokens', 0)
+        input_tokens = usage['input_tokens']
+        output_tokens = usage['output_tokens']
+        total_tokens = usage['total_tokens']
 
+        if total_tokens > 0:
             self.tokens_usage['input_tokens'] += input_tokens
             self.tokens_usage['output_tokens'] += output_tokens
             self.tokens_usage['total_tokens'] += total_tokens
-            tokens_added = True
-            logger.debug(f"    📊 Token 统计 (response_metadata): input={input_tokens}, output={output_tokens}, total={total_tokens}")
-
-        # 尝试直接从 result 获取 token usage（某些 LLM 实现）
-        elif hasattr(result, 'token_usage'):
-            token_usage = result.token_usage
-            input_tokens = token_usage.get('input_tokens', 0)
-            output_tokens = token_usage.get('output_tokens', 0)
-            total_tokens = token_usage.get('total_tokens', 0)
-
-            self.tokens_usage['input_tokens'] += input_tokens
-            self.tokens_usage['output_tokens'] += output_tokens
-            self.tokens_usage['total_tokens'] += total_tokens
-            tokens_added = True
-            logger.debug(f"    📊 Token 统计 (token_usage): input={input_tokens}, output={output_tokens}, total={total_tokens}")
-
-        # 尝试从 usage_metadata 获取（OpenAI 新版格式）
-        elif hasattr(result, 'usage_metadata'):
-            usage = result.usage_metadata
-            input_tokens = usage.get('input_tokens', 0)
-            output_tokens = usage.get('output_tokens', 0)
-            total_tokens = usage.get('total_tokens', 0)
-
-            self.tokens_usage['input_tokens'] += input_tokens
-            self.tokens_usage['output_tokens'] += output_tokens
-            self.tokens_usage['total_tokens'] += total_tokens
-            tokens_added = True
-            logger.debug(f"    📊 Token 统计 (usage_metadata): input={input_tokens}, output={output_tokens}, total={total_tokens}")
-
-        if not tokens_added:
+            logger.debug(f"    📊 Token 统计: input={input_tokens}, output={output_tokens}, total={total_tokens}")
+        else:
             logger.warning(f"    ⚠️  无法从 LLM 响应中获取 token 统计信息")
-            logger.debug(f"    📋 result 类型: {type(result)}, 属性: {dir(result)}")
+            logger.debug(f"    📋 result 类型: {type(result)}")
 
     def _validate_tools(self, tools: list[str] | None):
         """验证工具是否存在"""
