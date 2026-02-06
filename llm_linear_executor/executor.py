@@ -494,17 +494,10 @@ class Executor:
         if not self._can_use_tool(node.initial_tool_name):
             error_msg = f"工具 {node.initial_tool_name} 调用次数已用完"
             logger.info(f"    ✗ {error_msg}")
-            # 先添加模拟的 AIMessage(tool_calls)
             self._add_message_to_thread(node.thread_id,
-                AIMessage(content="", tool_calls=[{
-                    "name": node.initial_tool_name,
-                    "args": node.initial_tool_args or {},
-                    "id": "initial_tool"
-                }]))
-            self._add_message_to_thread(node.thread_id,
-                ToolMessage(content=error_msg, tool_call_id="initial_tool"))
+                HumanMessage(content=f"[工具 {node.initial_tool_name} 调用失败]: {error_msg}"))
             return error_msg
-        
+
         # 执行初始工具
         tool_args = node.initial_tool_args or {}
         logger.info(f"    - 执行初始工具: {node.initial_tool_name}")
@@ -519,19 +512,11 @@ class Executor:
 
         self._consume_tool_usage(node.initial_tool_name)
         logger.info(f"    - 工具 {node.initial_tool_name} 剩余调用次数: {self.tools_usage_limit[node.initial_tool_name]}")
-        
-        # 添加模拟的 AIMessage(tool_calls)，确保消息格式符合 API 规范
-        # 这样后续节点使用 _llm_tool_loop 时，ToolMessage 会有对应的 tool_calls
+
+        # 将初始工具结果作为 HumanMessage 添加到上下文
+        # 避免使用 AIMessage(tool_calls) + ToolMessage 组合，因为部分 LLM API 对消息格式校验严格
         self._add_message_to_thread(node.thread_id,
-            AIMessage(content="", tool_calls=[{
-                "name": node.initial_tool_name,
-                "args": tool_args,
-                "id": "initial_tool"
-            }]))
-        
-        # 添加工具结果到上下文
-        self._add_message_to_thread(node.thread_id,
-            ToolMessage(content=str(tool_result), tool_call_id="initial_tool"))
+            HumanMessage(content=f"[工具 {node.initial_tool_name} 返回结果]:\n{str(tool_result)}"))
         
         # 如果没有 task_prompt，直接返回工具结果
         if not node.task_prompt:
